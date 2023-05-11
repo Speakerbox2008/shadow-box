@@ -47,31 +47,53 @@
         
         this.input.on("pointerdown", function (pointer) {
           // Send arrow direction to other player
-          var arrow = this.add.image(pointer.x, pointer.y, "arrow");
+          var angle = Phaser.Math.Angle.Between(
+            400,
+            300,
+            pointer.worldX,
+            pointer.worldY
+          );
+          this.socket.emit("arrowDirection", angle);
+          
+          // Show the arrow direction for the local player
+          var arrow = this.add.image(400, 300, "arrow");
           arrow.setOrigin(0.5);
-          arrow.angle = pointer.angle;
+          arrow.angle = Phaser.Math.RadToDeg(angle);
           setTimeout(function () {
             arrow.destroy();
           }, 1000);
         }, this);
+        
+        this.socket = io();
+        this.socket.on("arrowDirection", function (angle) {
+          // Show the arrow direction for the other player
+          this.otherPlayer.visible = true;
+          this.otherPlayer.angle = Phaser.Math.RadToDeg(angle);
+        }, this);
+        
+        this.socket.on("reset", function () {
+          // Reset the arrow direction for the other player
+          this.otherPlayer.visible = false;
+        }, this);
       }
       
       function update() {
-        // Listen for arrow direction from other player
-        // If the direction matches, add a point
-        if (this.input.activePointer.isDown && this.otherPlayer.visible) {
+        // Check if the local player's arrow direction matches the other player's
+        if (this.otherPlayer.visible) {
           var angle = Phaser.Math.Angle.Between(
-            this.otherPlayer.x,
-            this.otherPlayer.y,
+            400,
+            300,
             this.input.activePointer.worldX,
             this.input.activePointer.worldY
           );
           var diff = Math.abs(Phaser.Math.Angle.ShortestBetween(angle, this.otherPlayer.angle));
           if (diff < 30) {
             console.log("Point!");
+            this.socket.emit("point");
           }
         }
       }
     </script>
+    <script src="https://cdn.socket.io/4.0.1/socket.io.min.js"></script>
   </body>
 </html>
